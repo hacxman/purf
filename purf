@@ -134,7 +134,8 @@ class MainWin(QtGui.QMainWindow):
                ("Stop", "Esc", self.on_stop),
                ("Reload", "Ctrl+R", self.on_reload),
                ("Reload alt", "F5", self.on_reload),
-               ("URL bar", "Ctrl+L", self.on_urlbar)]
+               ("URL bar", "Ctrl+L", self.on_urlbar),
+               ("Go to URL in clipboard", "Ctrl+P", self.on_paste_url)]
 
     self.actions = []
     for nejm, keys, act in actions:
@@ -150,6 +151,14 @@ class MainWin(QtGui.QMainWindow):
 #            QtCore.Qt.Key_Alt + QtCore.Qt.Key_Left), self),
 #          QtCore.SIGNAL('activated()'),
 #          self.on_back)
+
+  def on_paste_url(self):
+    clipboard = QtGui.QApplication.clipboard()
+    txt = clipboard.text(QtGui.QClipboard.Selection)
+    if txt == '':
+      txt = clipboard.text(QtGui.QClipboard.Selection)
+    if not txt == '':
+      self.load_url(txt)
 
   def on_back(self):
     self.www.page().history().back()
