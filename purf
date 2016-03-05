@@ -1,0 +1,219 @@
+#!/usr/bin/python
+
+from PyQt4 import QtGui, QtWebKit, Qt, QtCore
+import sys
+
+HOMEPAGE = 'https://news.ycombinator.com'
+
+class Node:
+    """Node for Python Trie Implementation"""
+    
+    def __init__(self):
+        self.word = None
+        self.nodes = {} # dict of nodes
+        
+    def __get_all__(self):
+        """Get all of the words in the trie"""
+        x = []
+        
+        for key, node in self.nodes.iteritems() : 
+            if(node.word is not None):
+                x.append(node.word)
+            
+            x += node.__get_all__()
+                
+        return x
+    
+    def __str__(self):
+        return self.word
+    
+    def __insert__(self, word, string_pos = 0):
+        """Add a word to the node in a Trie"""
+        current_letter = word[string_pos]
+        
+        # Create the Node if it does not already exist
+        if current_letter not in self.nodes:
+            self.nodes[current_letter] = Node();
+
+        if(string_pos + 1 == len(word)):
+            self.nodes[current_letter].word = word
+        else:
+          self.nodes[current_letter].__insert__(word, string_pos + 1)
+            
+        return True
+    
+    def __get_all_with_prefix__(self, prefix, string_pos):
+        """Return all nodes in a trie with a given prefix or that are equal to the prefix"""
+        x = []
+        
+        for key, node in self.nodes.iteritems() : 
+            # If the current character of the prefix is one of the nodes or we have
+            # already satisfied the prefix match, then get the matches
+            if(string_pos >= len(prefix) or key == prefix[string_pos]):
+              if(node.word is not None):
+                  x.append(node.word)
+                    
+              if(node.nodes != {}):
+                  if(string_pos + 1 <= len(prefix)):
+                    x += node.__get_all_with_prefix__(prefix, string_pos + 1)
+                  else:
+                    x += node.__get_all_with_prefix__(prefix, string_pos)
+    
+        return x       
+
+
+class Trie:
+   """Trie Python Implementation"""
+  
+   def __init__(self):
+        self.root = Node()
+        
+   def insert(self, word):
+        self.root.__insert__(word)
+        
+   def get_all(self):
+        return self.root.__get_all__()
+
+   def get_all_with_prefix(self, prefix, string_pos = 0):
+        return self.root.__get_all_with_prefix__(prefix, string_pos)
+
+
+class MainWin(QtGui.QMainWindow):
+  def __init__(self, parent=None):
+    super(MainWin, self).__init__(parent)
+
+    self.history = Trie()
+    self.initUI()
+    
+    self.www.settings().setAttribute(QtWebKit.QWebSettings.DeveloperExtrasEnabled, True)
+
+  def initUI(self):
+    w = QtGui.QWidget()
+    self.w = w
+    self.setCentralWidget(w)
+    vbox = QtGui.QVBoxLayout(w)
+    self.vbox = vbox
+
+
+    hboxw = QtGui.QWidget()
+    hbox = QtGui.QHBoxLayout(hboxw)
+    #vbox.addLayout(hbox)
+    vbox.addWidget(hboxw)
+
+    self.url = QtGui.QLineEdit()
+    hbox.addWidget(QtGui.QLabel("URL:"))
+    hbox.addWidget(self.url)
+    self.btnGo = QtGui.QPushButton("GO")
+    hbox.addWidget(self.btnGo)
+    self.btnGo.clicked.connect(self.on_btnGo_clicked)
+    self.url.returnPressed.connect(self.on_btnGo_clicked)
+    self.url.textChanged.connect(self.on_url_textChanged)
+
+    self.go_hbox = hbox
+    self.vbox.removeWidget
+
+    www = QtWebKit.QWebView()
+    www.load(Qt.QUrl(HOMEPAGE))
+    www.loadFinished.connect(self.on_www_loadFinished)
+    www.loadProgress.connect(self.on_www_loadProgress)
+    www.titleChanged.connect(self.on_www_titleChanged)
+    www.urlChanged.connect(self.on_www_urlChanged)
+    self.www = www
+    vbox.addWidget(www)
+    vbox.setMargin(0)
+    hbox.setMargin(0)
+
+    hboxw.hide()
+    self.urlbar_layout = hboxw
+    size = self.url.minimumSizeHint()
+    self.urlbar_layout.setMaximumHeight(size.height())
+
+
+    actions = [("Back", "Alt+Left", self.on_back),
+               ("Forward", "Alt+Right", self.on_forward),
+               ("Stop", "Esc", self.on_stop),
+               ("Reload", "Ctrl+R", self.on_reload),
+               ("Reload alt", "F5", self.on_reload),
+               ("URL bar", "Ctrl+L", self.on_urlbar)]
+
+    self.actions = []
+    for nejm, keys, act in actions:
+      a = QtGui.QAction(QtGui.QIcon(), nejm, self)
+      a.setShortcut(keys)
+      a.setShortcutContext(QtCore.Qt.ApplicationShortcut)
+      self.addAction(a)
+      QtCore.QObject.connect(a, QtCore.SIGNAL("triggered()"), act)
+
+#    QtCore.QObject.connect(
+#        QtGui.QShortcut(
+#          QtGui.QKeySequence(
+#            QtCore.Qt.Key_Alt + QtCore.Qt.Key_Left), self),
+#          QtCore.SIGNAL('activated()'),
+#          self.on_back)
+
+  def on_back(self):
+    self.www.page().history().back()
+
+  def on_forward(self):
+    self.www.page().history().forward()
+
+  def on_stop(self):
+    if not self.urlbar_layout.isHidden():
+      self.urlbar_layout.hide()
+    else:
+      self.www.stop()
+
+  def on_reload(self):
+    self.www.reload()
+
+  def on_urlbar(self):
+    if self.urlbar_layout.isHidden():
+      self.urlbar_layout.show()
+      self.url.setFocus()
+      self.url.selectAll()
+
+  def on_www_titleChanged(self, val):
+    self.setWindowTitle('{} - {}'.format(self.url.text(), self.www.title()))
+
+  def on_www_loadProgress(self, val):
+    self.setWindowTitle('{}% {}'.format(val,  self.url.text()))
+
+  def on_www_loadFinished(self, val):
+    if val:
+      self.setWindowTitle('{} - {}'.format(self.url.text(), self.www.title()))
+
+  def on_www_urlChanged(self, val):
+    self.url.setText(val.toString())
+    self.history.insert(val.toString())
+
+
+  def on_btnGo_clicked(self):
+    url = str(self.url.text())
+    if not (url.startswith('https://') \
+         or url.startswith('http://')):
+       url = 'http://'+url
+    self.url.setText(url)
+
+    self.www.load(Qt.QUrl(url))
+    self.urlbar_layout.hide()
+  
+  def on_url_textChanged(self, text):
+    print text
+    h = self.history.get_all_with_prefix(text)
+    print h
+
+
+  def load_url(self, url):
+    self.url.setText(url)
+    self.on_btnGo_clicked()
+
+if __name__ == '__main__':
+  app = QtGui.QApplication(sys.argv)
+
+  mw = MainWin()
+  mw.show()
+
+  if len(sys.argv) > 1:
+    mw.load_url(sys.argv[1])
+
+  sys.exit(app.exec_())
