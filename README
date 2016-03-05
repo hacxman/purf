@@ -1,4 +1,4 @@
-Purf is a single window broser using WebKit, QT4 and Python with plans
+Purf is a simple single window browser using WebKit, QT4 and Python with plans
 to move to PyQT5 once python QWebKit is available for QT5.
 
 Features - no tabs, no adblock(yet), Back/Forward, hideous URL bar,
@@ -6,9 +6,10 @@ web inspector, no history, no cache, no nothing.
 
 Planned: no tabs, extensions (adblock), zooming, history with string matching
 a la firefox, search engine integration into URL bar via prefix
-(e.g. - g pizza - search pizza on google), no session tracking included.
+(e.g. - g pizza - search pizza on google), no session tracking included,
+no password manager.
 
-Session tracking (i.e. opened windows, restore last closed window, etc)
+Session tracking (i.e. opened windows, restore last closed windows, etc)
 will be maintained in external program probably mounted via FUSE with 9P
 option so that user can restore opened tabs on other computer.
 
