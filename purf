@@ -3,6 +3,9 @@
 from PyQt4 import QtGui, QtWebKit, Qt, QtCore
 import sys
 
+__author__ = 'hexo <hacxman at gmail dot com>'
+__license__= 'MIT'
+
 HOMEPAGE = 'https://news.ycombinator.com'
 
 class Node:
@@ -129,6 +132,9 @@ class MainWin(QtGui.QMainWindow):
     self.urlbar_layout.setMaximumHeight(size.height())
 
 
+    # connect linkHover
+    self.www.page().linkHovered.connect(self.on_linkHover)
+
     actions = [("Back", "Alt+Left", self.on_back),
                ("Forward", "Alt+Right", self.on_forward),
                ("Stop", "Esc", self.on_stop),
@@ -151,6 +157,10 @@ class MainWin(QtGui.QMainWindow):
 #            QtCore.Qt.Key_Alt + QtCore.Qt.Key_Left), self),
 #          QtCore.SIGNAL('activated()'),
 #          self.on_back)
+  def on_linkHover(self, link, title, textContent):
+    self.setWindowTitle(link)
+    if link == '':
+      self.setWindowTitle('{} - {}'.format(self.url.text(), self.www.title()))
 
   def on_paste_url(self):
     clipboard = QtGui.QApplication.clipboard()
