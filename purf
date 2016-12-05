@@ -2,6 +2,8 @@
 
 from PyQt4 import QtGui, QtWebKit, Qt, QtCore
 import sys
+import os
+import subprocess
 
 __author__ = 'hexo <hacxman at gmail dot com>'
 __license__= 'MIT'
@@ -81,20 +83,32 @@ class Trie:
         return self.root.__get_all_with_prefix__(prefix, string_pos)
 
 
-class MainWin(QtGui.QMainWindow):
-  def __init__(self, parent=None):
+class MyWebView(QtWebKit.QWebView):
+    def __init__(self, parent=None):
+        super(MyWebView, self).__init__(parent)
+        self.lastButton = None
+        self.newTab = QtCore.pyqtSignal(str)
+
+    def mouseReleaseEvent(self, event):
+        self.lastButton = event.button()
+        super(MyWebView, self).mouseReleaseEvent(event)
+
+class MainWin(QtGui.QX11EmbedWidget): #QtGui.QMainWindow):
+  def __init__(self, parent=None, winEmbedId=None):
     super(MainWin, self).__init__(parent)
 
     self.history = Trie()
-    self.initUI()
+    self.initUI(winEmbedId)
+    self.winEmbedId = winEmbedId
+    self.hoverLink = ""
     
     self.www.settings().setAttribute(QtWebKit.QWebSettings.DeveloperExtrasEnabled, True)
 
-  def initUI(self):
-    w = QtGui.QWidget()
-    self.w = w
-    self.setCentralWidget(w)
-    vbox = QtGui.QVBoxLayout(w)
+  def initUI(self, winEmbedId=None):
+    #w = QtGui.QX11EmbedWidget()
+    #self.w = w
+    #self.setCentralWidget(w)
+    vbox = QtGui.QVBoxLayout(self)
     self.vbox = vbox
 
 
@@ -115,12 +129,14 @@ class MainWin(QtGui.QMainWindow):
     self.go_hbox = hbox
     self.vbox.removeWidget
 
-    www = QtWebKit.QWebView()
+    www = MyWebView() #QtWebKit.QWebView()
     www.load(Qt.QUrl(HOMEPAGE))
     www.loadFinished.connect(self.on_www_loadFinished)
     www.loadProgress.connect(self.on_www_loadProgress)
     www.titleChanged.connect(self.on_www_titleChanged)
     www.urlChanged.connect(self.on_www_urlChanged)
+    www.page().setLinkDelegationPolicy(QtWebKit.QWebPage.DelegateAllLinks)
+    www.connect(www, QtCore.SIGNAL("linkClicked(const QUrl&)"), self.on_www_linkClicked)
     self.www = www
     vbox.addWidget(www)
     vbox.setMargin(0)
@@ -151,16 +167,32 @@ class MainWin(QtGui.QMainWindow):
       self.addAction(a)
       QtCore.QObject.connect(a, QtCore.SIGNAL("triggered()"), act)
 
+    if winEmbedId is not None:
+      print 'winEmbedId =',winEmbedId
+      self.embedInto(winEmbedId)
+      self.hide()
 #    QtCore.QObject.connect(
 #        QtGui.QShortcut(
 #          QtGui.QKeySequence(
 #            QtCore.Qt.Key_Alt + QtCore.Qt.Key_Left), self),
 #          QtCore.SIGNAL('activated()'),
 #          self.on_back)
+
+  def on_www_linkClicked(self, url):
+    if self.www.lastButton == QtCore.Qt.MiddleButton:
+        if self.winEmbedId is None:
+            subprocess.Popen([sys.argv[0], url.toString()])
+        else:
+            subprocess.Popen([sys.argv[0], '-e', str(self.winEmbedId), url.toString()])
+    elif self.www.lastButton == QtCore.Qt.LeftButton:
+        self.www.load(url)
+
+
   def on_linkHover(self, link, title, textContent):
     self.setWindowTitle(link)
     if link == '':
       self.setWindowTitle('{} - {}'.format(self.url.text(), self.www.title()))
+
 
   def on_paste_url(self):
     clipboard = QtGui.QApplication.clipboard()
@@ -192,14 +224,23 @@ class MainWin(QtGui.QMainWindow):
       self.url.selectAll()
 
   def on_www_titleChanged(self, val):
-    self.setWindowTitle('{} - {}'.format(self.url.text(), self.www.title()))
+    try:
+        self.setWindowTitle('{} - {}'.format(self.url.text(), self.www.title()))
+    except:
+        pass
 
   def on_www_loadProgress(self, val):
-    self.setWindowTitle('{}% {}'.format(val,  self.url.text()))
+    try:
+        self.setWindowTitle('{}% {}'.format(val,  self.url.text()))
+    except:
+        pass
 
   def on_www_loadFinished(self, val):
     if val:
-      self.setWindowTitle('{} - {}'.format(self.url.text(), self.www.title()))
+        try:
+          self.setWindowTitle('{} - {}'.format(self.url.text(), self.www.title()))
+        except:
+            pass
 
   def on_www_urlChanged(self, val):
     self.url.setText(val.toString())
@@ -217,22 +258,28 @@ class MainWin(QtGui.QMainWindow):
     self.urlbar_layout.hide()
   
   def on_url_textChanged(self, text):
-    print text
+    print 'url text changed', text
     h = self.history.get_all_with_prefix(text)
-    print h
+    print 'history =', h
 
 
   def load_url(self, url):
     self.url.setText(url)
     self.on_btnGo_clicked()
 
+import argparse
 if __name__ == '__main__':
   app = QtGui.QApplication(sys.argv)
 
-  mw = MainWin()
+  parser = argparse.ArgumentParser(description='Simple Web browser')
+  parser.add_argument('-e', dest='winEmbedId', type=int)
+  parser.add_argument('url', nargs='?', help='URL to load')
+  args = parser.parse_args()
+
+  mw = MainWin(winEmbedId = args.winEmbedId)
   mw.show()
 
-  if len(sys.argv) > 1:
-    mw.load_url(sys.argv[1])
+  if args.url:
+    mw.load_url(args.url)
 
   sys.exit(app.exec_())
